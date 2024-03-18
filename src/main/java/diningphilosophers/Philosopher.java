@@ -25,15 +25,20 @@ public class Philosopher
         while (running) {
             try {
                 think();
-                myLeftStick.take();
-                // think(); // Pour augmenter la probabilité d'interblocage
-                myRightStick.take();
-                // success : process
-                eat();
-                // release resources
-                myLeftStick.release();
-                myRightStick.release();
-                // try again
+                // 2-Step locking protocol
+                // 1st step : try to get resources
+                if (tryTakeStick(myLeftStick)) {
+                    if (tryTakeStick(myRightStick)) {
+                        // success : process
+                        eat();
+                        // release resources
+                        releaseStick(myLeftStick);
+                        releaseStick(myRightStick);
+                    } else {
+                        // failure : release resources
+                        releaseStick(myLeftStick);
+                    }
+                }
             } catch (InterruptedException ex) {
                 Logger.getLogger("Table").log(Level.SEVERE, "{0} Interrupted", this.getName());
             }
@@ -46,6 +51,21 @@ public class Philosopher
         running = false;
     }
 
+    private boolean tryTakeStick(ChopStick stick) throws InterruptedException {
+        int delay = myRandom.nextInt(100 + DELAY);
+        boolean result = stick.tryTake(delay);
+        if (result) {
+            System.out.println(this.getName() + " took " + stick + " before " + delay + " ms");
+        } else {
+            System.out.println(this.getName()+ " could not take " + stick + " before " + delay + " ms");
+        }
+        return result;
+    }
+
+    private void releaseStick(ChopStick stick) {
+        stick.release();
+        System.out.println(this.getName() + " releases " + stick);
+    }
     private void think() throws InterruptedException {
         int delay = myRandom.nextInt(500 + DELAY);
         System.out.println(this.getName() + " Starts Thinking for: " + delay + " ms");
